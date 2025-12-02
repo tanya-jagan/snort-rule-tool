@@ -414,7 +414,401 @@ if __name__ == "__main__":
     ]
   };
 
+  const attackCategoryTests = [
+  // 1. not-suspicious
+  {
+    category: "Classtype - not-suspicious",
+    name: "Not Suspicious Traffic - Basic HTTP",
+    rule: 'alert tcp any any -> any 80 (msg:"Normal HTTP"; classtype:not-suspicious; content:"GET"; sid:2000001;)',
+    packet: { protocol: 'tcp', dst_port: '80', payload: 'GET /index.html' },
+    shouldMatch: true,
+    description: 'Normal HTTP GET request considered not suspicious'
+  },
+
+];
+
+
   const matchingTests = {
+    attackCategory: [
+  // 1. not-suspicious
+  {
+    category: "Attack Category",
+    name: "Not Suspicious Traffic - Basic HTTP",
+    rule: 'alert tcp any any -> any 80 (msg:"Normal HTTP"; classtype:not-suspicious; content:"GET"; sid:2000001;)',
+    packet: { protocol: 'tcp', dst_port: '80', payload: 'GET /index.html' },
+    shouldMatch: true,
+    description: 'Normal HTTP GET request considered not suspicious'
+  },
+    // 2. unknown
+  {
+    category: "Attack Category",
+    name: "Unknown Traffic - No Clear Signature",
+    rule: 'alert tcp any any -> any any (msg:"Unknown traffic"; classtype:unknown; content:"???"; sid:2000002;)',
+    packet: { protocol: 'tcp', dst_port: '1234', payload: '???' },
+    shouldMatch: true,
+    description: 'Matches unusual placeholder payload'
+  },
+
+  // 3. bad-unknown
+  {
+    category: "Attack Category",
+    name: "Potentially Bad Unknown Traffic",
+    rule: 'alert tcp any any -> any any (msg:"Bad Unknown"; classtype:bad-unknown; content:"BAD"; sid:2000003;)',
+    packet: { protocol: 'tcp', dst_port: '9999', payload: 'BADDATA' },
+    shouldMatch: true,
+    description: 'Matches suspicious unknown traffic'
+  },
+
+  // 4. attempted-recon
+  {
+    category: "Attack Category",
+    name: "Attempted Recon - Nmap",
+    rule: 'alert tcp any any -> any any (msg:"Nmap Scan"; classtype:attempted-recon; content:"Nmap"; sid:2000004;)',
+    packet: { protocol: 'tcp', dst_port: '80', payload: 'Nmap scan initiated' },
+    shouldMatch: true,
+    description: 'Simple recon scan payload'
+  },
+
+  // 5. successful-recon-limited
+  {
+    category: "Attack Category",
+    name: "Limited Recon Success",
+    rule: 'alert tcp any any -> any 80 (msg:"Version Leak"; classtype:successful-recon-limited; content:"Server:"; sid:2000005;)',
+    packet: { protocol: 'tcp', dst_port: '80', payload: 'HTTP/1.1 200 OK\r\nServer: Apache' },
+    shouldMatch: true,
+    description: 'Server header leaks software name'
+  },
+
+  // 6. successful-recon-largescale
+  {
+    category: "Attack Category",
+    name: "Large Scale Recon",
+    rule: 'alert tcp any any -> any any (msg:"Mass Scan"; classtype:successful-recon-largescale; content:"SCAN"; sid:2000006;)',
+    packet: { protocol: 'tcp', dst_port: '443', payload: 'SCAN MASS' },
+    shouldMatch: true,
+    description: 'Mass scanning signature'
+  },
+
+  // 7. attempted-dos
+  {
+    category: "Attack Category",
+    name: "Attempted DoS - Slowloris",
+    rule: 'alert tcp any any -> any 80 (msg:"Attempted DoS"; classtype:attempted-dos; content:"Slowloris"; sid:2000007;)',
+    packet: { protocol: 'tcp', dst_port: '80', payload: 'Slowloris attack attempt' },
+    shouldMatch: true,
+    description: 'DoS attempt payload'
+  },
+
+  // 8. successful-dos
+  {
+    category: "Attack Category",
+    name: "Successful DoS Message",
+    rule: 'alert tcp any any -> any any (msg:"DoS Success"; classtype:successful-dos; content:"SERVICE UNAVAILABLE"; sid:2000008;)',
+    packet: { protocol: 'tcp', dst_port: '80', payload: '503 SERVICE UNAVAILABLE' },
+    shouldMatch: true,
+    description: 'DoS success indicator'
+  },
+
+  // 9. attempted-user
+  {
+    category: "Attack Category",
+    name: "Attempted User Priv Esc",
+    rule: 'alert tcp any any -> any any (msg:"Attempted User Privilege Gain"; classtype:attempted-user; content:"sudo"; sid:2000009;)',
+    packet: { protocol: 'tcp', dst_port: '22', payload: 'sudo exploit' },
+    shouldMatch: true,
+    description: 'Attempt to elevate privileges'
+  },
+
+  // 10. unsuccessful-user
+  {
+    category: "Attack Category",
+    name: "Failed Privilege Attempt",
+    rule: 'alert tcp any any -> any any (msg:"Unsuccessful User Privilege Gain"; classtype:unsuccessful-user; content:"access denied"; sid:2000010;)',
+    packet: { protocol: 'tcp', dst_port: '22', payload: 'access denied' },
+    shouldMatch: true,
+    description: 'Failed privilege escalation output'
+  },
+
+  // 11. successful-user
+  {
+    category: "Attack Category",
+    name: "Successful User Priv Esc",
+    rule: 'alert tcp any any -> any any (msg:"Successful User Gain"; classtype:succesful-user; content:"root:"; sid:2000011;)',
+    packet: { protocol: 'tcp', dst_port: '22', payload: 'root: ALL=(ALL)' },
+    shouldMatch: true,
+    description: 'Root access gained'
+  },
+
+  // 12. attempted-admin
+  {
+    category: "Attack Category",
+    name: "Attempted Admin Privilege Gain",
+    rule: 'alert tcp any any -> any any (msg:"Attempted Admin Gain"; classtype:attempted-admin; content:"admin exploit"; sid:2000012;)',
+    packet: { protocol: 'tcp', dst_port: '22', payload: 'admin exploit attempt' },
+    shouldMatch: true,
+    description: 'Admin escalation attempt'
+  },
+
+  // 13. successful-admin
+  {
+    category: "Attack Category",
+    name: "Successful Admin Gain",
+    rule: 'alert tcp any any -> any any (msg:"Admin Gain"; classtype:successful-admin; content:"uid=0"; sid:2000013;)',
+    packet: { protocol: 'tcp', dst_port: '22', payload: 'uid=0(root)' },
+    shouldMatch: true,
+    description: 'Root-level access indicator'
+  },
+
+  // 14. rpc-portmap-decode
+  {
+    category: "Attack Category",
+    name: "RPC Portmap Decode",
+    rule: 'alert udp any any -> any 111 (msg:"RPC Portmap"; classtype:rpc-portmap-decode; content:"RPC"; sid:2000014;)',
+    packet: { protocol: 'udp', dst_port: '111', payload: 'RPC CALL' },
+    shouldMatch: true,
+    description: 'RPC traffic detection'
+  },
+
+  // 15. shellcode-detect
+  {
+    category: "Attack Category",
+    name: "Shellcode Detected",
+    rule: 'alert tcp any any -> any any (msg:"Shellcode"; classtype:shellcode-detect; content:"\x90\x90"; sid:2000015;)',
+    packet: { protocol: 'tcp', dst_port: '445', payload: '\x90\x90\x90\x90' },
+    shouldMatch: true,
+    description: 'NOP sled detection'
+  },
+
+  // 16. string-detect
+  {
+    category: "Attack Category",
+    name: "Suspicious String",
+    rule: 'alert tcp any any -> any any (msg:"Suspicious String"; classtype:string-detect; content:"CONFIDENTIAL"; sid:2000016;)',
+    packet: { protocol: 'tcp', dst_port: '80', payload: 'CONFIDENTIAL DATA EXPOSED' },
+    shouldMatch: true,
+    description: 'Detects sensitive terms'
+  },
+
+  // 17. suspicious-filename-detect
+  {
+    category: "Attack Category",
+    name: "Suspicious Filename",
+    rule: 'alert tcp any any -> any 80 (msg:"Suspicious Filename"; classtype:suspicious-filename-detect; content:".exe"; sid:2000017;)',
+    packet: { protocol: 'tcp', dst_port: '80', payload: 'GET /malware.exe' },
+    shouldMatch: true,
+    description: 'Detects suspicious file downloads'
+  },
+
+  // 18. suspicious-login
+  {
+    category: "Attack Category",
+    name: "Suspicious Login",
+    rule: 'alert tcp any any -> any 22 (msg:"Suspicious Login"; classtype:suspicious-login; content:"invalid user"; sid:2000018;)',
+    packet: { protocol: 'tcp', dst_port: '22', payload: 'invalid user attempt' },
+    shouldMatch: true,
+    description: 'Suspicious SSH login attempt'
+  },
+
+  // 19. system-call-detect
+  {
+    category: "Attack Category",
+    name: "System Call Detection",
+    rule: 'alert tcp any any -> any any (msg:"System Call"; classtype:system-call-detect; content:"sys_call"; sid:2000019;)',
+    packet: { protocol: 'tcp', dst_port: '123', payload: 'sys_call invoked' },
+    shouldMatch: true,
+    description: 'Detects system call strings'
+  },
+
+  // 20. tcp-connection
+  {
+    category: "Attack Category",
+    name: "TCP Connection Established",
+    rule: 'alert tcp any any -> any any (msg:"TCP Connection"; classtype:tcp-connection; content:"SYN"; sid:2000020;)',
+    packet: { protocol: 'tcp', dst_port: '80', payload: 'SYN' },
+    shouldMatch: true,
+    description: 'Detects connection initiation'
+  },
+
+  // 21. trojan-activity
+  {
+    category: "Attack Category",
+    name: "Trojan Beaconing",
+    rule: 'alert tcp any any -> any any (msg:"Trojan Activity"; classtype:trojan-activity; content:"beacon"; sid:2000021;)',
+    packet: { protocol: 'tcp', dst_port: '4444', payload: 'sending beacon' },
+    shouldMatch: true,
+    description: 'Trojan C2 beacon detection'
+  },
+
+  // 22. unusual-client-port-connection
+  {
+    category: "Attack Category",
+    name: "Unusual Client Port",
+    rule: 'alert tcp any any -> any 21 (msg:"Unusual Client Port"; classtype:unusual-client-port-connection; content:"FTP"; sid:2000022;)',
+    packet: { protocol: 'tcp', dst_port: '21', payload: 'FTP unusual client activity' },
+    shouldMatch: true,
+    description: 'Unusual port usage'
+  },
+
+  // 23. network-scan
+  {
+    category: "Attack Category",
+    name: "Network Scan",
+    rule: 'alert tcp any any -> any any (msg:"Network Scan"; classtype:network-scan; content:"scan"; sid:2000023;)',
+    packet: { protocol: 'tcp', dst_port: '8080', payload: 'scan detected' },
+    shouldMatch: true,
+    description: 'Generic scan detection'
+  },
+
+  // 24. denial-of-service
+  {
+    category: "Attack Category",
+    name: "Denial of Service",
+    rule: 'alert udp any any -> any any (msg:"UDP Flood"; classtype:denial-of-service; content:"flood"; sid:2000024;)',
+    packet: { protocol: 'udp', dst_port: '9999', payload: 'udp flood' },
+    shouldMatch: true,
+    description: 'DoS signature'
+  },
+
+  // 25. non-standard-protocol
+  {
+    category: "Attack Category",
+    name: "Non-Standard Protocol",
+    rule: 'alert tcp any any -> any any (msg:"Non Standard Protocol"; classtype:non-standard-protocol; content:"WEIRDPROTO"; sid:2000025;)',
+    packet: { protocol: 'tcp', dst_port: '1234', payload: 'WEIRDPROTO handshake' },
+    shouldMatch: true,
+    description: 'Detects nonstandard protocol markers'
+  },
+
+  // 26. protocol-command-decode
+  {
+    category: "Attack Category",
+    name: "Protocol Decode",
+    rule: 'alert tcp any any -> any any (msg:"Protocol Decode"; classtype:protocol-command-decode; content:"CMD"; sid:2000026;)',
+    packet: { protocol: 'tcp', dst_port: '21', payload: 'CMD LIST' },
+    shouldMatch: true,
+    description: 'Detects command decoding activity'
+  },
+
+  // 27. web-application-activity
+  {
+    category: "Attack Category",
+    name: "Web App Activity",
+    rule: 'alert tcp any any -> any 80 (msg:"Web App Activity"; classtype:web-application-activity; content:"/admin"; sid:2000027;)',
+    packet: { protocol: 'tcp', dst_port: '80', payload: 'GET /admin/dashboard' },
+    shouldMatch: true,
+    description: 'Detects access to admin paths'
+  },
+
+  // 28. web-application-attack
+  {
+    category: "Attack Category",
+    name: "Web App Attack - SQL Injection",
+    rule: 'alert tcp any any -> any 80 (msg:"SQL Injection"; classtype:web-application-attack; content:"UNION SELECT"; sid:2000028;)',
+    packet: { protocol: 'tcp', dst_port: '80', payload: 'id=1 UNION SELECT username,password FROM users' },
+    shouldMatch: true,
+    description: 'SQL injection payload'
+  },
+
+  // 29. misc-activity
+  {
+    category: "Attack Category",
+    name: "Misc Activity",
+    rule: 'alert tcp any any -> any any (msg:"Misc Activity"; classtype:misc-activity; content:"MISC"; sid:2000029;)',
+    packet: { protocol: 'tcp', dst_port: '80', payload: 'MISC event' },
+    shouldMatch: true,
+    description: 'Generic miscellaneous activity'
+  },
+
+  // 30. misc-attack
+  {
+    category: "Attack Category",
+    name: "Misc Attack",
+    rule: 'alert tcp any any -> any any (msg:"Misc Attack"; classtype:misc-attack; content:"ATTACK"; sid:2000030;)',
+    packet: { protocol: 'tcp', dst_port: '80', payload: 'ATTACK VECTOR' },
+    shouldMatch: true,
+    description: 'Misc attack signature'
+  },
+
+  // 31. icmp-event
+  {
+    category: "Attack Category",
+    name: "ICMP Event",
+    rule: 'alert icmp any any -> any any (msg:"ICMP Event"; classtype:icmp-event; content:"PING"; sid:2000031;)',
+    packet: { protocol: 'icmp', dst_port: 'any', payload: 'PING' },
+    shouldMatch: true,
+    description: 'Detects generic ICMP message'
+  },
+
+  // 32. inappropriate-content
+  {
+    category: "Attack Category",
+    name: "Inappropriate Content",
+    rule: 'alert tcp any any -> any any (msg:"Inappropriate"; classtype:inappropriate-content; content:"adult"; sid:2000032;)',
+    packet: { protocol: 'tcp', dst_port: '80', payload: 'adult material content' },
+    shouldMatch: true,
+    description: 'Detects inappropriate content'
+  },
+
+  // 33. policy-violation
+  {
+    category: "Attack Category",
+    name: "Policy Violation",
+    rule: 'alert tcp any any -> any any (msg:"Policy Violation"; classtype:policy-violation; content:"restricted"; sid:2000033;)',
+    packet: { protocol: 'tcp', dst_port: '80', payload: 'restricted file access' },
+    shouldMatch: true,
+    description: 'Detects corporate policy violations'
+  },
+
+  // 34. default-login-attempt
+  {
+    category: "Attack Category",
+    name: "Default Login Attempt",
+    rule: 'alert tcp any any -> any 22 (msg:"Default Login"; classtype:default-login-attempt; content:"admin:admin"; sid:2000034;)',
+    packet: { protocol: 'tcp', dst_port: '22', payload: 'admin:admin' },
+    shouldMatch: true,
+    description: 'Detects login attempts using default credentials'
+  },
+
+  // 35. sdf (Sensitive Data)
+  {
+    category: "Attack Category",
+    name: "Sensitive Data Exposure",
+    rule: 'alert tcp any any -> any 80 (msg:"Sensitive Data"; classtype:sdf; content:"SSN:"; sid:2000035;)',
+    packet: { protocol: 'tcp', dst_port: '80', payload: 'SSN: 123-45-6789' },
+    shouldMatch: true,
+    description: 'Detects possible sensitive data leakage'
+  },
+
+  // 36. file-format
+  {
+    category: "Attack Category",
+    name: "Malicious File Format",
+    rule: 'alert tcp any any -> any 80 (msg:"Malicious File"; classtype:file-format; content:"MZ"; sid:2000036;)',
+    packet: { protocol: 'tcp', dst_port: '80', payload: 'MZ...EXE FILE' },
+    shouldMatch: true,
+    description: 'Windows PE header detection'
+  },
+
+  // 37. malware-cnc
+  {
+    category: "Attack Category",
+    name: "Malware C2 Traffic",
+    rule: 'alert tcp any any -> any any (msg:"C2 Traffic"; classtype:malware-cnc; content:"C2-PING"; sid:2000037;)',
+    packet: { protocol: 'tcp', dst_port: '5555', payload: 'C2-PING' },
+    shouldMatch: true,
+    description: 'Malware command & control payload'
+  },
+
+  // 38. client-side-exploit
+  {
+    category: "Attack Category",
+    name: "Client Side Exploit",
+    rule: 'alert tcp any any -> any 80 (msg:"Client Exploit"; classtype:client-side-exploit; content:"EXPLOIT"; sid:2000038;)',
+    packet: { protocol: 'tcp', dst_port: '80', payload: 'EXPLOIT BUFFER OVERFLOW' },
+    shouldMatch: true,
+    description: 'Client-side exploit indicator'
+  }
+],
     portMatching: [
       {
         category: 'Port Matching',
@@ -588,7 +982,8 @@ if __name__ == "__main__":
         ...matchingTests.portMatching,
         ...matchingTests.protocolMatching,
         ...matchingTests.contentMatching,
-        ...matchingTests.edgeCases
+        ...matchingTests.edgeCases,
+        ...matchingTests.attackCategory
       ];
 
       allMatchingTests.forEach(test => {
@@ -695,7 +1090,7 @@ if __name__ == "__main__":
                   <p className="text-slate-400">Comprehensive validation with {
                     testSuite.syntax.length + testSuite.input.length + testSuite.functional.length +
                     matchingTests.portMatching.length + matchingTests.protocolMatching.length + 
-                    matchingTests.contentMatching.length + matchingTests.edgeCases.length
+                    matchingTests.contentMatching.length + matchingTests.edgeCases.length + matchingTests.attackCategory.length
                   } automated tests</p>
                 </div>
                 <button
@@ -1297,7 +1692,7 @@ if __name__ == "__main__":
                         matchingTests.contentMatching.length + matchingTests.edgeCases.length} matching tests = 
                         {' '}{testSuite.syntax.length + testSuite.input.length + testSuite.functional.length +
                         matchingTests.portMatching.length + matchingTests.protocolMatching.length + 
-                        matchingTests.contentMatching.length + matchingTests.edgeCases.length} total automated tests
+                        matchingTests.contentMatching.length + matchingTests.edgeCases.length + matchingTests.attackCategory.length} total automated tests
                       </p>
                     </div>
                   </div>
